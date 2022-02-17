@@ -1,13 +1,17 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "DHT.h"
+#include <ESP32Servo.h>
+#define DHTPIN 13
+#define DHTTYPE DHT11
 
-//void getMode(); //request for Mode and min humidity every 5 sec
-//void getExist(); //request if plant exist in the shelf every 5 sec
-//void postStat(int,int,int); //post humidity(soil,air), temp to admid every hour
-//void postHeight(int); //post height every week
-//void Wifi_Connect();
-
+DHT dht(DHTPIN, DHTTYPE);
+void HumidTempSoil();
+void getMode(); //request for Mode and min humidity every 5 sec
+void getExist(); //request if plant exist in the shelf every 5 sec
+void postStat(int,int,int); //post humidity(soil,air), temp to admid every hour
+void Wifi_Connect();
 
 const char* ssid = "Tong";
 const char* password = "23456789";
@@ -17,13 +21,108 @@ bool autoMode = false; //false = Manual , true = auto
 bool isActive = false; //Is plant exist in the shelf.
 int minHumid;
 
+// soi moisture sensor
+int moisture_pin = A0;
+int moisture;
+char str[50];
 
+// servo
+
+bool isOn = false;
+#define servo_pin 26
+
+Servo servoMotor;
 
 StaticJsonDocument<2*JSON_OBJECT_SIZE(3)> JsonMode;
-StaticJsonDocument<JSON_OBJECT_SIZE(1)> JsonExist;
-StaticJsonDocument<JSON_OBJECT_SIZE(4)> JsonStat;
-StaticJsonDocument<JSON_OBJECT_SIZE(2)> JsonHeight;
+StaticJsonDocument<2*JSON_OBJECT_SIZE(2)> JsonExist;
+StaticJsonDocument<2*JSON_OBJECT_SIZE(5)> JsonStat;
 
+
+void setup() {
+  Serial.begin(115200);
+  servoMotor.setPeriodHertz(50);
+  servoMotor.attach(servo_pin);
+  servoMotor.write(0);
+//  dht.begin();
+//  Wifi_Connect();
+xTaskCreatePinnedToCore(HumidTempSoil,"HumidTempSoil", 32*1024, NULL, 1, NULL, 1);
+
+
+}
+
+void loop() {
+  //getMode();
+  // soil moisture
+  if (moisture < 70 && isOn==false){
+//    Serial.println("servo on");
+//      servoMotor.write(180);
+     for(int angle = 0; angle <= 180; angle +=5) {
+        servoMotor.write(angle);
+        Serial.println(angle);
+        delay(20);
+    }
+      isOn=true;
+      
+    }
+    else if(isOn==true && moisture>=70){
+//      servoMotor.write(0);
+      for(int angle = 180; angle >= 0; angle -=5) {
+        servoMotor.write(angle);
+        Serial.println(angle);
+        delay(20);
+    }
+      isOn=false;
+      Serial.println("servo off");
+    }
+   Serial.println("1 round");
+
+  vTaskDelay(2000/ portTICK_PERIOD_MS);
+}
+
+void postStat(int soil, int air, int temp){
+    if (WiFi.status() == WL_CONNECTED){
+    HTTPClient http;
+
+    http.begin("https://ecourse.cpe.ku.ac.th/exceed05/api/hardware/update_humid");
+    http.addHeader("Content-Type ", "applicaiton/json");
+
+
+    JsonStat["ID"] = plant_id;
+    JsonStat["humidity_soil_hard"] = soil;
+    JsonStat["humidity_air_hard"] = air;
+    JsonStat["temp"] = temp;
+    serializeJson(JsonStat, str);
+    int httpCode = http.POST(str);
+
+    if(httpCode == HTTP_CODE_OK){
+      String payload = http.getString();
+      Serial.println(httpCode);
+      Serial.println(payload);
+
+    } else{
+      Serial.println(httpCode);
+      Serial.println("Error On HTTP Code");
+    }
+  } else{
+    Wifi_Connect();
+  }
+  delay(100);
+}
+
+void HumidTempSoil(void* param){
+    while(1){
+    float humi  = dht.readHumidity();
+    // read temperature as Celsius
+    float tempC = dht.readTemperature();
+    moisture = analogRead(moisture_pin);
+    moisture = map(moisture,3000,500,0,100);
+    Serial.print("Mositure : ");
+    Serial.print(moisture);
+    Serial.println("%");
+
+    vTaskDelay(2000/ portTICK_PERIOD_MS);
+    }
+}
 
 void Wifi_Connect(){
   WiFi.disconnect();
@@ -37,7 +136,6 @@ void Wifi_Connect(){
   Serial.print("IP Address : ");
   Serial.println(WiFi.localIP());
 }
-
 
 void getMode(){
    if(WiFi.status() == WL_CONNECTED){
@@ -64,19 +162,4 @@ void getMode(){
    }else{
     Wifi_Connect();
    }
-}
-
-
-
-void setup() {
-  Serial.begin(115200);
-  Wifi_Connect();
-  // put your setup code here, to run once:
-
-}
-
-void loop() {
-  getMode();
-  // put your main code here, to run repeatedly:
-
 }
