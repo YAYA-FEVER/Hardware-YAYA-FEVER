@@ -18,7 +18,7 @@ const char* password = "23456789";
 
 const int plant_id = 1;
 bool autoMode = false; //false = Manual , true = auto
-bool isActive = false; //Is plant exist in the shelf.
+bool isExist = false; //Is plant exist in the shelf.
 int minHumid;
 
 // soi moisture sensor
@@ -29,7 +29,7 @@ char str[50];
 // servo
 
 bool isOn = false;
-#define servo_pin 26
+#define servo_pin 4
 
 Servo servoMotor;
 
@@ -40,43 +40,30 @@ StaticJsonDocument<2*JSON_OBJECT_SIZE(5)> JsonStat;
 
 void setup() {
   Serial.begin(115200);
-  servoMotor.setPeriodHertz(50);
+  //servoMotor.setPeriodHertz(50);
   servoMotor.attach(servo_pin);
-  servoMotor.write(0);
+  servoMotor.setPeriodHertz(50);
+  //servoMotor.write(0);
 //  dht.begin();
 //  Wifi_Connect();
-xTaskCreatePinnedToCore(HumidTempSoil,"HumidTempSoil", 32*1024, NULL, 1, NULL, 1);
+  //xTaskCreatePinnedToCore(HumidTempSoil,"HumidTempSoil", 32*1024, NULL, 1, NULL, 1);
 
 
 }
-
+int i=0;
 void loop() {
+  
   //getMode();
   // soil moisture
-  if (moisture < 70 && isOn==false){
-//    Serial.println("servo on");
-//      servoMotor.write(180);
-     for(int angle = 0; angle <= 180; angle +=5) {
-        servoMotor.write(angle);
-        Serial.println(angle);
-        delay(20);
-    }
-      isOn=true;
-      
-    }
-    else if(isOn==true && moisture>=70){
-//      servoMotor.write(0);
-      for(int angle = 180; angle >= 0; angle -=5) {
-        servoMotor.write(angle);
-        Serial.println(angle);
-        delay(20);
-    }
-      isOn=false;
-      Serial.println("servo off");
-    }
-   Serial.println("1 round");
-
-  vTaskDelay(2000/ portTICK_PERIOD_MS);
+  if(i==0){
+    Serial.println("Turn 60");
+    servoMotor.write(60);
+  }
+  i++;
+  //delay(1000);
+  //servoMotor.write(90);
+  //delay(1000);
+  
 }
 
 void postStat(int soil, int air, int temp){
@@ -146,7 +133,7 @@ void getMode(){
         String payload = http.getString();
         DeserializationError err = deserializeJson(JsonMode, payload);
         if(err){
-          Serial.print(F("deserializeJson() failed with code"));
+          Serial.print(F("deserializeJson() failed with code "));
           Serial.println(err.c_str());
         }else{
           Serial.println(httpCode);
@@ -154,6 +141,31 @@ void getMode(){
           autoMode=JsonMode["activate_auto"];
           Serial.println(minHumid);
           Serial.println(autoMode);
+        }
+      }else{
+        Serial.println(httpCode);
+        Serial.println("ERROR on HTTP Request");
+      }
+   }else{
+    Wifi_Connect();
+   }
+}
+
+void getExist(){
+   if(WiFi.status() == WL_CONNECTED){
+      HTTPClient http;
+      http.begin("https://ecourse.cpe.ku.ac.th/exceed05/api/hardware/exist_plant/1");
+      int httpCode = http.GET();
+      if(httpCode == HTTP_CODE_OK){
+        String payload = http.getString();
+        DeserializationError err = deserializeJson(JsonExist, payload);
+        if(err){
+          Serial.print(F("deserializeJson() failed with code "));
+          Serial.println(err.c_str());
+        }else{
+          Serial.println(httpCode);
+          isExist=JsonMode["existed"];
+          Serial.println(isExist);
         }
       }else{
         Serial.println(httpCode);
