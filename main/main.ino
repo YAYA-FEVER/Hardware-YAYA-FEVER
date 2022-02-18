@@ -18,6 +18,7 @@ const int plant_id = 1;
 int autoMode = 0; //false = Manual , true = auto
 int isExist = 0; //Is plant exist in the shelf.
 int minHumid;
+int water_time;
 
 // soi moisture sensor
 int moisture_pin = A0;
@@ -31,7 +32,7 @@ bool isOn = false;
 
 Servo servoMotor;
 
-StaticJsonDocument<2*JSON_OBJECT_SIZE(3)> JsonMode;
+StaticJsonDocument<2*JSON_OBJECT_SIZE(4)> JsonMode;
 StaticJsonDocument<2*JSON_OBJECT_SIZE(2)> JsonExist;
 StaticJsonDocument<2*JSON_OBJECT_SIZE(3)> JsonStat;
 
@@ -45,7 +46,7 @@ void setup() {
 
 
 }
-int i=0;
+
 void loop() {
   if(isExist==0){
     getExist();
@@ -56,7 +57,7 @@ void loop() {
            servoMotor.write(180);
            vTaskDelay(3000/ portTICK_PERIOD_MS);
            servoMotor.write(90);
-           vTaskDelay(5000/ portTICK_PERIOD_MS);
+           vTaskDelay((water_time*1000)/ portTICK_PERIOD_MS);
            servoMotor.write(0);
            vTaskDelay(3000/portTICK_PERIOD_MS);
            servoMotor.write(90);
@@ -137,8 +138,10 @@ void getMode(){
           Serial.println(httpCode);
           minHumid=JsonMode["humidity_soil_front"];
           autoMode=JsonMode["activate_auto"];
+          water_time=JsonMode["water_time"];
           Serial.println(minHumid);
           Serial.println(autoMode);
+          Serial.println(water_time);
         }
       }else{
         Serial.println(httpCode);
