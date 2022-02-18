@@ -4,18 +4,19 @@
 #include <ESP32Servo.h>
 
 
+
 void HumidTempSoil();
 void getMode(); //request for Mode and min humidity every 5 sec
 void getExist(); //request if plant exist in the shelf every 5 sec
 void postStat(int); //post humidity(soil,air), temp to admid every hour
 void Wifi_Connect();
 
-const char* ssid = "Mild";
-const char* password = "00000000";
+const char* ssid = "TheBenz2";
+const char* password = "11111111";
 
 const int plant_id = 1;
 int autoMode = 0; //false = Manual , true = auto
-int isExist = 1; //Is plant exist in the shelf.
+int isExist = 0; //Is plant exist in the shelf.
 int minHumid;
 
 // soi moisture sensor
@@ -163,7 +164,7 @@ void getExist(){
           Serial.println(err.c_str());
         }else{
           Serial.println(httpCode);
-          isExist=JsonMode["existed"];
+          isExist=JsonExist["existed"];
           Serial.println(isExist);
         }
       }else{
