@@ -100,16 +100,18 @@ void postStat(int soil, int air, int temp){
 }
 
 void HumidTempSoil(void* param){
-    while(isExist){
-    float humi  = dht.readHumidity();
-    // read temperature as Celsius
-    float tempC = dht.readTemperature();
-    moisture = analogRead(moisture_pin);
-    moisture = map(moisture,3000,500,0,100);
-    //Serial.print("Mositure : ");
-    //Serial.print(moisture);
-    //Serial.println("%");
-    postStat(moisture, (int)humi, (int)tempC);
+    while(1){
+      if(isExist==1){
+        float humi  = dht.readHumidity();
+        // read temperature as Celsius
+        float tempC = dht.readTemperature();
+        moisture = analogRead(moisture_pin);
+        moisture = map(moisture,3000,500,0,100);
+        //Serial.print("Mositure : ");
+        //Serial.print(moisture);
+        //Serial.println("%");
+        postStat(moisture, (int)humi, (int)tempC);
+      }
     vTaskDelay(2000/ portTICK_PERIOD_MS);
     }
 }
