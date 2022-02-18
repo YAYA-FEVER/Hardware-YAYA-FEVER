@@ -17,8 +17,8 @@ const char* ssid = "Tong";
 const char* password = "23456789";
 
 const int plant_id = 1;
-bool autoMode = false; //false = Manual , true = auto
-bool isExist = false; //Is plant exist in the shelf.
+int autoMode = 0; //false = Manual , true = auto
+int isExist = 0; //Is plant exist in the shelf.
 int minHumid;
 
 // soi moisture sensor
@@ -29,7 +29,7 @@ char str[50];
 // servo
 
 bool isOn = false;
-#define servo_pin 4
+#define servo_pin 26
 
 Servo servoMotor;
 
@@ -40,29 +40,33 @@ StaticJsonDocument<2*JSON_OBJECT_SIZE(5)> JsonStat;
 
 void setup() {
   Serial.begin(115200);
-  //servoMotor.setPeriodHertz(50);
+  Wifi_Connect();
   servoMotor.attach(servo_pin);
-  servoMotor.setPeriodHertz(50);
-  //servoMotor.write(0);
-//  dht.begin();
-//  Wifi_Connect();
-  //xTaskCreatePinnedToCore(HumidTempSoil,"HumidTempSoil", 32*1024, NULL, 1, NULL, 1);
+
+  xTaskCreatePinnedToCore(HumidTempSoil,"HumidTempSoil", 32*1024, NULL, 1, NULL, 1);
 
 
 }
 int i=0;
 void loop() {
-  
-  //getMode();
-  // soil moisture
-  if(i==0){
-    Serial.println("Turn 60");
-    servoMotor.write(60);
+  if(isExist==0){
+    getExist();
+  }else{
+    getMode();
+    if(autoMode==1){
+       if(moisture <= minHumid) {
+           servoMotor.write(180);
+           vTaskDelay(3000/ portTICK_PERIOD_MS);
+           servoMotor.write(90);
+           vTaskDelay(5000/ portTICK_PERIOD_MS);
+           servoMotor.write(0);
+           vTaskDelay(3000/portTICK_PERIOD_MS);
+           servoMotor.write(90);
+           vTaskDelay(10000/portTICK_PERIOD_MS);
+       }
+    }
   }
-  i++;
-  //delay(1000);
-  //servoMotor.write(90);
-  //delay(1000);
+  vTaskDelay(5000/ portTICK_PERIOD_MS);
   
 }
 
@@ -72,7 +76,6 @@ void postStat(int soil, int air, int temp){
 
     http.begin("https://ecourse.cpe.ku.ac.th/exceed05/api/hardware/update_humid");
     http.addHeader("Content-Type ", "applicaiton/json");
-
 
     JsonStat["ID"] = plant_id;
     JsonStat["humidity_soil_hard"] = soil;
@@ -93,20 +96,20 @@ void postStat(int soil, int air, int temp){
   } else{
     Wifi_Connect();
   }
-  delay(100);
+  vTaskDelay(100/ portTICK_PERIOD_MS);
 }
 
 void HumidTempSoil(void* param){
-    while(1){
+    while(isExist){
     float humi  = dht.readHumidity();
     // read temperature as Celsius
     float tempC = dht.readTemperature();
     moisture = analogRead(moisture_pin);
     moisture = map(moisture,3000,500,0,100);
-    Serial.print("Mositure : ");
-    Serial.print(moisture);
-    Serial.println("%");
-
+    //Serial.print("Mositure : ");
+    //Serial.print(moisture);
+    //Serial.println("%");
+    postStat(moisture, (int)humi, (int)tempC);
     vTaskDelay(2000/ portTICK_PERIOD_MS);
     }
 }
@@ -149,6 +152,7 @@ void getMode(){
    }else{
     Wifi_Connect();
    }
+   vTaskDelay(100/ portTICK_PERIOD_MS);
 }
 
 void getExist(){
