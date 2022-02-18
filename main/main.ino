@@ -7,7 +7,7 @@
 void HumidTempSoil();
 void getMode(); //request for Mode and min humidity every 5 sec
 void getExist(); //request if plant exist in the shelf every 5 sec
-void postStat(int,int,int); //post humidity(soil,air), temp to admid every hour
+void postStat(int); //post humidity(soil,air), temp to admid every hour
 void Wifi_Connect();
 
 const char* ssid = "Mild";
