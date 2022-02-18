@@ -1,30 +1,27 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include "DHT.h"
 #include <ESP32Servo.h>
-#define DHTPIN 13
-#define DHTTYPE DHT11
 
-DHT dht(DHTPIN, DHTTYPE);
+
 void HumidTempSoil();
 void getMode(); //request for Mode and min humidity every 5 sec
 void getExist(); //request if plant exist in the shelf every 5 sec
 void postStat(int,int,int); //post humidity(soil,air), temp to admid every hour
 void Wifi_Connect();
 
-const char* ssid = "Tong";
-const char* password = "23456789";
+const char* ssid = "Mild";
+const char* password = "00000000";
 
 const int plant_id = 1;
 int autoMode = 0; //false = Manual , true = auto
-int isExist = 0; //Is plant exist in the shelf.
+int isExist = 1; //Is plant exist in the shelf.
 int minHumid;
 
 // soi moisture sensor
 int moisture_pin = A0;
 int moisture;
-char str[50];
+char str[100];
 
 // servo
 
@@ -35,7 +32,7 @@ Servo servoMotor;
 
 StaticJsonDocument<2*JSON_OBJECT_SIZE(3)> JsonMode;
 StaticJsonDocument<2*JSON_OBJECT_SIZE(2)> JsonExist;
-StaticJsonDocument<2*JSON_OBJECT_SIZE(5)> JsonStat;
+StaticJsonDocument<2*JSON_OBJECT_SIZE(3)> JsonStat;
 
 
 void setup() {
@@ -70,31 +67,30 @@ void loop() {
   
 }
 
-void postStat(int soil, int air, int temp){
+void postStat(int soil){
     if (WiFi.status() == WL_CONNECTED){
-    HTTPClient http;
+      Serial.println("Posting Status");
+      HTTPClient http;
 
-    http.begin("https://ecourse.cpe.ku.ac.th/exceed05/api/hardware/update_humid");
-    http.addHeader("Content-Type ", "applicaiton/json");
+      http.begin("https://ecourse.cpe.ku.ac.th/exceed05/api/hardware/update/soil");
+      http.addHeader("Content-Type ", "applicaiton/json");
 
-    JsonStat["ID"] = plant_id;
-    JsonStat["humidity_soil_hard"] = soil;
-    JsonStat["humidity_air_hard"] = air;
-    JsonStat["temp"] = temp;
-    serializeJson(JsonStat, str);
-    int httpCode = http.POST(str);
+      JsonStat["ID"] = plant_id;
+      JsonStat["humidity_soil_hard"] = soil;
+      serializeJson(JsonStat, str);
+      int httpCode = http.POST(str);
 
-    if(httpCode == HTTP_CODE_OK){
-      String payload = http.getString();
-      Serial.println(httpCode);
-      Serial.println(payload);
+      if(httpCode == HTTP_CODE_OK){
+       String payload = http.getString();
+        Serial.println(httpCode);
+        Serial.println(payload);
 
+      } else{
+        Serial.println(httpCode);
+        Serial.println("Error On HTTP Code");
+      }
     } else{
-      Serial.println(httpCode);
-      Serial.println("Error On HTTP Code");
-    }
-  } else{
-    Wifi_Connect();
+      Wifi_Connect();
   }
   vTaskDelay(100/ portTICK_PERIOD_MS);
 }
@@ -102,17 +98,12 @@ void postStat(int soil, int air, int temp){
 void HumidTempSoil(void* param){
     while(1){
       if(isExist==1){
-        float humi  = dht.readHumidity();
-        // read temperature as Celsius
-        float tempC = dht.readTemperature();
         moisture = analogRead(moisture_pin);
-        moisture = map(moisture,3000,500,0,100);
-        //Serial.print("Mositure : ");
-        //Serial.print(moisture);
-        //Serial.println("%");
-        postStat(moisture, (int)humi, (int)tempC);
+        moisture = map(moisture,3200,600,0,100);
+        //Serial.println(moisture);
+        postStat(moisture);
       }
-    vTaskDelay(2000/ portTICK_PERIOD_MS);
+    vTaskDelay(5000/ portTICK_PERIOD_MS);
     }
 }
 
@@ -131,6 +122,7 @@ void Wifi_Connect(){
 
 void getMode(){
    if(WiFi.status() == WL_CONNECTED){
+      Serial.println("Getting Mode");
       HTTPClient http;
       http.begin("https://ecourse.cpe.ku.ac.th/exceed05/api/hardware/auto_mode/1");
       int httpCode = http.GET();
@@ -159,6 +151,7 @@ void getMode(){
 
 void getExist(){
    if(WiFi.status() == WL_CONNECTED){
+      Serial.println("Getting Exitance");
       HTTPClient http;
       http.begin("https://ecourse.cpe.ku.ac.th/exceed05/api/hardware/exist_plant/1");
       int httpCode = http.GET();
