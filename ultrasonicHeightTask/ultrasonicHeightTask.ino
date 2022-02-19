@@ -13,7 +13,7 @@ Ultrasonic ultrasonic(5);
 // Do Height task only (try with humidtemphumid at 15.22 18 feb)
 
 long RangeInCentimeters;
-long MAX_height = 30;
+long MAX_height = 43;
 long height;
 
 void getMode(); //request for Mode and min humidity every 5 sec
@@ -22,7 +22,7 @@ void postStat(float,float); //post humidity(air), temp to admid every hour
 void postHeight(); //post height every week
 void Wifi_Connect();
 
-const char* ssid = "TheBenz2";
+const char* ssid = "TheBenz";
 const char* password = "11111111";
 char str[50];
 const int plant_id = 1;
@@ -43,34 +43,43 @@ void setup() {
   
 } 
 void loop() {
-  RangeInCentimeters = ultrasonic.MeasureInCentimeters();
-  height = MAX_height - RangeInCentimeters;
-  Serial.println(height);
-  postHeight();
-  delay(5000);
+  if(isExist == 0){
+    getExist();
+  }else{
+    RangeInCentimeters = ultrasonic.MeasureInCentimeters();
+    height = MAX_height - RangeInCentimeters;
+    Serial.print(height);
+    Serial.println("cm.");
+    postHeight();
+    
+  }
+  vTaskDelay(5000/ portTICK_PERIOD_MS);
 }
 
 void HumidTemp(void* param){
     while(1){
-    int val = analogRead(A0);
+      if(isExist==1){
+        int val = analogRead(A0);
 
-    float humi  = dht.readHumidity();
-    float tempC = dht.readTemperature();
-    float tempF = dht.readTemperature(true);
-    if (isnan(humi) || isnan(tempC) || isnan(tempF)) {
-    Serial.println("Failed to read from DHT sensor!");
-  } else {
-    Serial.print("Humidity: ");
-    Serial.print(humi);
-    Serial.print("%");
-    Serial.print("  |  "); 
-    Serial.print("Temperature: ");
-    Serial.print(tempC);
-    Serial.println("°C ~ ");
-    postStat(humi, tempC);
-  }
+        float humi  = dht.readHumidity();
+        float tempC = dht.readTemperature();
+        float tempF = dht.readTemperature(true);
+          if (isnan(humi) || isnan(tempC) || isnan(tempF)) {
+          Serial.println("Failed to read from DHT sensor!");
+        } else {
+          Serial.print("Humidity: ");
+          Serial.print(humi);
+          Serial.print("%");
+          Serial.print("  |  "); 
+          Serial.print("Temperature: ");
+          Serial.print(tempC);
+          Serial.println("°C ~ ");
+          postStat(humi, tempC);
+        }
 
-    vTaskDelay(2000/ portTICK_PERIOD_MS);
+    
+      }
+      vTaskDelay(2000/ portTICK_PERIOD_MS);
     }
 }
 
@@ -78,7 +87,7 @@ void Wifi_Connect(){
   WiFi.disconnect();
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED){
-    delay(1000);
+    vTaskDelay(1000/ portTICK_PERIOD_MS);
     Serial.println("Connecting to WiFi...");
   }
     Serial.println("Connecting to Wifi network");
@@ -112,7 +121,7 @@ void postHeight(){
   } else{
     Wifi_Connect();
   }
-  delay(100);
+  vTaskDelay(100/ portTICK_PERIOD_MS);
 }
 void getExist(){
    if(WiFi.status() == WL_CONNECTED){
@@ -121,15 +130,14 @@ void getExist(){
       int httpCode = http.GET();
       if(httpCode == HTTP_CODE_OK){
         String payload = http.getString();
-        // plant is on the shelf
-        isExist = 1;
+
         DeserializationError err = deserializeJson(JsonExist, payload);
         if(err){
           Serial.print(F("deserializeJson() failed with code "));
           Serial.println(err.c_str());
         }else{
           Serial.println(httpCode);
-          isExist=JsonMode["existed"];
+          isExist=JsonExist["existed"];
           Serial.println(isExist);
         }
       }else{
