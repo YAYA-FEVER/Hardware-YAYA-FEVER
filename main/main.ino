@@ -11,7 +11,7 @@ void getExist(); //request if plant exist in the shelf every 5 sec
 void postStat(int); //post humidity(soil,air), temp to admid every hour
 void Wifi_Connect();
 
-const char* ssid = "TheBenz2";
+const char* ssid = "TheBenz";
 const char* password = "11111111";
 
 const int plant_id = 1;
@@ -61,7 +61,7 @@ void loop() {
            servoMotor.write(180);
            vTaskDelay(9050/portTICK_PERIOD_MS);
            servoMotor.write(90);
-           vTaskDelay(10000/portTICK_PERIOD_MS);
+           vTaskDelay(15000/portTICK_PERIOD_MS);
        }
     }
   }
@@ -101,8 +101,9 @@ void HumidTempSoil(void* param){
     while(1){
       if(isExist==1){
         moisture = analogRead(moisture_pin);
-        moisture = map(moisture,3200,600,0,100);
-        //Serial.println(moisture);
+        moisture = map(moisture,3500,650,0,100);
+        Serial.print("Moisture = ");
+        Serial.println(moisture);
         postStat(moisture);
       }
     vTaskDelay(5000/ portTICK_PERIOD_MS);
