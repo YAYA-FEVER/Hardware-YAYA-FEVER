@@ -54,12 +54,12 @@ void loop() {
     getMode();
     if(autoMode==1){
        if(moisture <= minHumid) {
-           servoMotor.write(180);
-           vTaskDelay(3000/ portTICK_PERIOD_MS);
+           servoMotor.write(0);
+           vTaskDelay(9500/ portTICK_PERIOD_MS);
            servoMotor.write(90);
            vTaskDelay((water_time*1000)/ portTICK_PERIOD_MS);
-           servoMotor.write(0);
-           vTaskDelay(3000/portTICK_PERIOD_MS);
+           servoMotor.write(180);
+           vTaskDelay(9050/portTICK_PERIOD_MS);
            servoMotor.write(90);
            vTaskDelay(10000/portTICK_PERIOD_MS);
        }
